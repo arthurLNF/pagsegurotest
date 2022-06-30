@@ -3,38 +3,74 @@ package br.com.contafacil.pagsegurotest
 import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.widget.TextView
 import br.com.uol.pagseguro.plugpagservice.wrapper.*
 import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagActivationListener
+import br.com.uol.pagseguro.plugpagservice.wrapper.listeners.PlugPagPaymentListener
 
 
-class MainActivity : AppCompatActivity(), PlugPagActivationListener {
+class MainActivity : AppCompatActivity(), PlugPagActivationListener, PlugPagPaymentListener {
+    lateinit var paymentData: PlugPagPaymentData
+    val appIdentification = PlugPagAppIdentification("MeuApp", "1.0.7")
+    val plugpag = PlugPag(this, appIdentification)
+    lateinit var txtPagamento: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        txtPagamento = findViewById<TextView>(R.id.txtPagamento)
         startPayment(this)
     }
+
     fun startPayment(context: Context) {
-        val paymentData = PlugPagPaymentData(
+        paymentData = PlugPagPaymentData(
             PlugPag.TYPE_CREDITO,
-            25000,
+            25001,
             PlugPag.INSTALLMENT_TYPE_A_VISTA,
             1,
-            "CODVENDA"
+            "CODVENDA1"
         )
-        val appIdentification = PlugPagAppIdentification("MeuApp", "1.0.7")
-        val plugpag = PlugPag(context, appIdentification)
-        //val listener = PagSeguroActivationListener()
-        val initResult =plugpag.doAsyncInitializeAndActivatePinpad(
-                PlugPagActivationData("403938"),
-                this)
+
+        val initResult = plugpag.doAsyncInitializeAndActivatePinpad(
+            PlugPagActivationData("403938"),
+            this
+        )
     }
+
     override fun onActivationProgress(data: PlugPagEventData) {
-        val d = data
+        txtPagamento.text = data.customMessage
     }
+
     override fun onError(result: PlugPagInitializationResult) {
-        val e = result
+        txtPagamento.text = result.errorMessage
     }
+
     override fun onSuccess(result: PlugPagInitializationResult) {
-        val s = result
+        txtPagamento.text = result.errorMessage
+        val paymentResult = plugpag.doAsyncPayment(paymentData, this)
+    }
+
+    override fun onError(it: PlugPagTransactionResult) {
+        val s = it
+        txtPagamento.text = it.message
+    }
+
+    override fun onPaymentProgress(eventData: PlugPagEventData) {
+        txtPagamento.text = eventData.customMessage
+    }
+
+    override fun onPrinterError(printerResult: PlugPagPrintResult) {
+        val p = printerResult
+        txtPagamento.text = printerResult.message
+    }
+
+    override fun onPrinterSuccess(printerResult: PlugPagPrintResult) {
+        val p = printerResult
+        txtPagamento.text = printerResult.message
+    }
+
+    override fun onSuccess(it: PlugPagTransactionResult) {
+        val result = it
+        txtPagamento.text = it.message
     }
 }
