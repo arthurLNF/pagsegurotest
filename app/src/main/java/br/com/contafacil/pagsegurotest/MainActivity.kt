@@ -1,16 +1,18 @@
 package br.com.contafacil.pagsegurotest
 
+import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
+import android.os.Environment
+import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
-import android.widget.Toast
 import br.com.uol.pagseguro.plugpagservice.wrapper.*
 import com.github.danielfelgar.drawreceiptlib.ReceiptBuilder
 import java.io.ByteArrayOutputStream
@@ -19,21 +21,27 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), PlugPagPrinterListener {
     val appIdentification = PlugPagAppIdentification("MeuApp", "1.0.7")
     val plugpag = PlugPag(this, appIdentification)
     lateinit var imgView: ImageView
     lateinit var btnImprimir: Button
     private lateinit var notinhaBitmap: Bitmap
-
-
+    val path = "/sdcard/Download"
+    //val path = Environment.getExternalStorageDirectory().absolutePath
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        ActivityCompat.requestPermissions(
+            this, arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ), 1
+        )
         imgView = findViewById(R.id.notinha)
         btnImprimir = findViewById(R.id.btn_imprimir)
         montarImagem()
-        btnImprimir.setOnClickListener{
+        btnImprimir.setOnClickListener {
             imprimir(plugpag)
         }
     }
@@ -62,10 +70,10 @@ class MainActivity : AppCompatActivity() {
             .setAlign(Paint.Align.CENTER).setTypeface(this, "fonts/RobotoMono-Regular.ttf")
 
         notinhaBitmap = receipt.build()
-        salvarImagensToInternalStorage("nota.png", notinhaBitmap)
+        salvarImagensToInternalStorage("/recibo.png", notinhaBitmap)
 
-
-        val imgFile = File("/data/data/br.com.contafacil.pagsegurotest/files/sdcard/Download/nota.png")
+        val fileName = "$path/recibo.png";
+        val imgFile = File(fileName)
 
         if (imgFile.exists()) {
             val myBitmap = BitmapFactory.decodeFile(imgFile.absolutePath)
@@ -75,7 +83,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun salvarImagensToInternalStorage(fileName: String?, imagem: Bitmap) {
-        val dir = File("/data/data/br.com.contafacil.pagsegurotest/files/sdcard/Download/" + fileName!!)
+
+        val dir = File(path + fileName!!)
         if (!dir.exists()) dir.parentFile?.mkdirs()
         try {
 //            val bmp = BitmapFactory.decodeByteArray(imagem, 0, imagem.length)
@@ -94,24 +103,22 @@ class MainActivity : AppCompatActivity() {
 
     fun imprimir(plugPag: PlugPag?) {
         val data = PlugPagPrinterData(
-            "/data/data/br.com.contafacil.pagsegurotest/files/sdcard/Download/nota.png",
+            "$path/recibo.png",
             4,
             10 * 12
         )
-        val listener: PlugPagPrinterListener = object : PlugPagPrinterListener {
-            override fun onError(data: PlugPagPrintResult) {
-                data.message // Mensagem de erro
-                data.errorCode // Código de erro
-            }
 
-            override fun onSuccess(data: PlugPagPrintResult) {
-                data.message
-            }
-        }
-
-        plugPag?.setPrinterListener(listener)
+        plugPag?.setPrinterListener(this)
 
         plugPag?.printFromFile(data)
+    }
+
+    override fun onError(data: PlugPagPrintResult) {
+        val d = data
+    }
+
+    override fun onSuccess(data: PlugPagPrintResult) {
+        val d = data
     }
 
 }
